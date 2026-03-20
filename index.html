@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinAgent — Seu Agente Financeiro Pessoal</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0A0E1A;--bg2:#111827;--bg3:#1a2235;--card:#141c2e;
+    --border:#1e2d45;--border2:#243552;
+    --green:#00D97E;--green2:#00b868;--green-dim:rgba(0,217,126,0.08);--green-glow:rgba(0,217,126,0.15);
+    --red:#FF4757;--red-dim:rgba(255,71,87,0.08);
+    --amber:#FFB800;--amber-dim:rgba(255,184,0,0.08);
+    --blue:#4A9EFF;--blue-dim:rgba(74,158,255,0.08);
+    --purple:#A855F7;
+    --text:#E8EDF5;--text2:#8899BB;--text3:#4A5878;
+    --font:'Sora',sans-serif;--mono:'JetBrains Mono',monospace;
+    --radius:14px;--radius-sm:8px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(0,217,126,0.04) 0%,transparent 70%),radial-gradient(ellipse 40% 50% at 80% 80%,rgba(74,158,255,0.04) 0%,transparent 70%);pointer-events:none;z-index:0;}
+
+  /* HEADER */
+  header{position:sticky;top:0;z-index:100;background:rgba(10,14,26,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+  .logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;letter-spacing:-0.5px;}
+  .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--green),#00a86b);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 20px var(--green-glow);}
+  .logo span{color:var(--green);}
+  .header-right{display:flex;align-items:center;gap:12px;}
+  .status-pill{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text2);}
+  .status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--green);}50%{opacity:.6;box-shadow:0 0 16px var(--green);}}
+
+  /* LAYOUT */
+  .layout{display:flex;flex:1;height:calc(100vh - 60px);position:relative;z-index:1;}
+
+  /* SIDEBAR */
+  .sidebar{width:270px;min-width:270px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;overflow-y:auto;}
+  .sidebar-section{padding:16px;border-bottom:1px solid var(--border);}
+  .sidebar-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:10px;}
+
+  /* Sheets connection card */
+  .sheets-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;}
+  .sheets-status{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .sheets-icon{font-size:20px;}
+  .sheets-info{flex:1;}
+  .sheets-info strong{font-size:13px;display:block;}
+  .sheets-info span{font-size:11px;color:var(--text3);}
+  .conn-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;border:1px solid;}
+  .conn-badge.disconnected{color:var(--text3);border-color:var(--border2);background:var(--bg);}
+  .conn-badge.connected{color:var(--green);border-color:rgba(0,217,126,0.3);background:var(--green-dim);}
+  .conn-badge.loading{color:var(--amber);border-color:rgba(255,184,0,0.3);background:var(--amber-dim);}
+
+  .url-input-wrap{margin-bottom:8px;}
+  .url-input-wrap label{font-size:10px;color:var(--text3);display:block;margin-bottom:4px;}
+  .url-input-wrap input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:7px 10px;outline:none;transition:border-color .2s;}
+  .url-input-wrap input:focus{border-color:var(--green);}
+  .url-input-wrap input::placeholder{color:var(--text3);}
+
+  .btn-connect{width:100%;background:var(--green-dim);border:1px solid var(--green);border-radius:6px;color:var(--green);font-family:var(--font);font-size:12px;font-weight:600;padding:8px;cursor:pointer;transition:all .2s;margin-bottom:6px;}
+  .btn-connect:hover{background:var(--green);color:#000;}
+  .btn-connect:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-refresh{width:100%;background:none;border:1px solid var(--border);border-radius:6px;color:var(--text3);font-family:var(--font);font-size:11px;padding:6px;cursor:pointer;transition:all .2s;}
+  .btn-refresh:hover{border-color:var(--blue);color:var(--blue);}
+
+  /* Dados carregados */
+  .data-preview{margin-top:10px;display:none;}
+  .data-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);}
+  .data-item:last-child{border-bottom:none;}
+  .data-item-label{font-size:11px;color:var(--text3);}
+  .data-item-value{font-size:12px;font-family:var(--mono);font-weight:500;color:var(--text);}
+  .data-item-value.green{color:var(--green);}
+  .data-item-value.red{color:var(--red);}
+  .data-item-value.amber{color:var(--amber);}
+
+  /* Mode buttons */
+  .mode-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text2);font-family:var(--font);font-size:12px;padding:9px 12px;cursor:pointer;transition:all .2s;margin-bottom:6px;}
+  .mode-btn.active{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+  .mode-btn:hover:not(.active){background:var(--bg3);border-color:var(--border2);color:var(--text);}
+  .mode-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);transition:all .2s;}
+  .mode-btn.active .mode-dot{background:var(--green);}
+
+  /* Quick questions */
+  .quick-btn{width:100%;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text2);font-family:var(--font);font-size:12px;padding:9px 12px;text-align:left;cursor:pointer;transition:all .2s;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .quick-btn:hover{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+
+  /* CHAT */
+  .chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px;scroll-behavior:smooth;}
+  .messages::-webkit-scrollbar{width:4px;}
+  .messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;flex:1;padding:40px;gap:16px;}
+  .welcome-icon{width:64px;height:64px;background:linear-gradient(135deg,rgba(0,217,126,0.15),rgba(74,158,255,0.1));border:1px solid var(--green);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 40px var(--green-glow);animation:float 4s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+  .welcome h1{font-size:26px;font-weight:700;letter-spacing:-.5px;background:linear-gradient(135deg,var(--text) 40%,var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .welcome p{font-size:14px;color:var(--text2);max-width:440px;line-height:1.7;}
+  .welcome-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;max-width:500px;}
+  .chip{background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--text2);cursor:pointer;transition:all .2s;}
+  .chip:hover{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+
+  /* Messages */
+  .message{display:flex;gap:12px;animation:fadeUp .3s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  .message.user{flex-direction:row-reverse;}
+  .avatar{width:34px;height:34px;min-width:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;}
+  .avatar.agent{background:linear-gradient(135deg,var(--green),#00a86b);box-shadow:0 0 16px var(--green-glow);color:#000;}
+  .avatar.user{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:12px;}
+  .bubble{max-width:75%;border-radius:var(--radius);padding:14px 16px;line-height:1.7;font-size:14px;}
+  .message.agent .bubble{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px;color:var(--text);}
+  .message.user .bubble{background:var(--green-dim);border:1px solid rgba(0,217,126,0.2);border-top-right-radius:4px;}
+  .bubble h3{font-size:14px;font-weight:600;color:var(--green);margin:12px 0 6px;}
+  .bubble h3:first-child{margin-top:0;}
+  .bubble ul{padding-left:16px;margin:8px 0;}
+  .bubble li{margin-bottom:4px;color:var(--text2);}
+  .bubble li strong{color:var(--text);}
+  .bubble p{margin-bottom:8px;}
+  .bubble p:last-child{margin-bottom:0;}
+  .bubble strong{color:var(--text);}
+  .bubble code{font-family:var(--mono);font-size:12px;background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--green);}
+  .msg-meta{font-size:10px;color:var(--text3);margin-top:4px;padding:0 4px;}
+  .message.user .msg-meta{text-align:right;}
+
+  /* Typing */
+  .typing{display:flex;align-items:center;gap:4px;padding:6px 0;}
+  .typing span{width:6px;height:6px;background:var(--green);border-radius:50%;animation:bounce 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:.2s;}
+  .typing span:nth-child(3){animation-delay:.4s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-6px);opacity:1;}}
+
+  /* Metric cards within bubble */
+  .metric-row{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;}
+  .metric{flex:1;min-width:90px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .metric-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
+  .metric-value{font-size:16px;font-weight:700;font-family:var(--mono);margin-top:2px;}
+  .metric-value.green{color:var(--green);}
+  .metric-value.red{color:var(--red);}
+  .metric-value.amber{color:var(--amber);}
+  .metric-value.blue{color:var(--blue);}
+  .insight-box{background:var(--green-dim);border:1px solid rgba(0,217,126,0.2);border-radius:8px;padding:12px;margin:10px 0;font-size:13px;}
+  .warning-box{background:var(--red-dim);border:1px solid rgba(255,71,87,0.2);border-radius:8px;padding:12px;margin:10px 0;font-size:13px;color:#ffaaaa;}
+  .info-box{background:var(--blue-dim);border:1px solid rgba(74,158,255,0.2);border-radius:8px;padding:12px;margin:10px 0;font-size:13px;color:#aaccff;}
+
+  /* INPUT AREA */
+  .input-area{padding:16px 24px 20px;border-top:1px solid var(--border);background:rgba(10,14,26,0.6);backdrop-filter:blur(10px);}
+  .upload-zone{margin-bottom:12px;border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;background:var(--bg3);}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--green);background:var(--green-dim);}
+  .upload-zone input{display:none;}
+  .upload-zone-text{font-size:12px;color:var(--text3);}
+  .upload-zone-text strong{color:var(--text2);}
+  .upload-status{font-size:11px;color:var(--green);margin-left:auto;}
+  .input-row{display:flex;gap:10px;align-items:flex-end;}
+  .input-wrap{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;transition:border-color .2s;display:flex;align-items:flex-end;gap:8px;}
+  .input-wrap:focus-within{border-color:var(--green);}
+  textarea{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:14px;resize:none;max-height:120px;min-height:22px;line-height:1.5;}
+  textarea::placeholder{color:var(--text3);}
+  .send-btn{width:38px;height:38px;min-width:38px;background:var(--green);border:none;border-radius:10px;color:#000;font-size:16px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px var(--green-glow);}
+  .send-btn:hover{background:var(--green2);transform:scale(1.05);}
+  .send-btn:disabled{background:var(--border);color:var(--text3);box-shadow:none;cursor:not-allowed;}
+  .input-hint{font-size:11px;color:var(--text3);margin-top:8px;text-align:center;}
+
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+  /* Script modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:680px;width:90%;max-height:85vh;overflow-y:auto;}
+  .modal h2{font-size:16px;margin-bottom:6px;color:var(--text);}
+  .modal p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;}
+  .code-block{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;color:#aaccff;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow-y:auto;margin-bottom:12px;line-height:1.6;}
+  .modal-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn-copy{background:var(--green-dim);border:1px solid var(--green);border-radius:8px;color:var(--green);font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:all .2s;}
+  .btn-copy:hover{background:var(--green);color:#000;}
+  .btn-close{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-family:var(--font);font-size:13px;padding:8px 16px;cursor:pointer;transition:all .2s;}
+  .btn-close:hover{border-color:var(--text2);color:var(--text2);}
+  .step{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start;}
+  .step-num{width:22px;height:22px;min-width:22px;background:var(--green-dim);border:1px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green);}
+  .step-text{font-size:12px;color:var(--text2);line-height:1.6;padding-top:2px;}
+  .step-text strong{color:var(--text);}
+  .show-script-btn{width:100%;margin-top:8px;background:var(--blue-dim);border:1px solid var(--blue);border-radius:6px;color:var(--blue);font-family:var(--font);font-size:11px;font-weight:600;padding:7px;cursor:pointer;transition:all .2s;}
+  .show-script-btn:hover{background:var(--blue);color:#000;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💹</div>
+    Fin<span>Agent</span> <span style="font-size:11px;color:var(--text3);font-weight:400">Lucas Sanchez</span>
+  </div>
+  <div class="header-right">
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span id="headerStatus">IA Financeira Ativa</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- Google Sheets Connection -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Planilha Google Sheets</div>
+      <div class="sheets-card">
+        <div class="sheets-status">
+          <span class="sheets-icon">📊</span>
+          <div class="sheets-info">
+            <strong>Controle Financeiro</strong>
+            <span id="sheetsSubtitle">Não conectado</span>
+          </div>
+          <span class="conn-badge disconnected" id="connBadge">Off</span>
+        </div>
+        <div class="url-input-wrap">
+          <label>URL da sua API (Apps Script)</label>
+          <input type="text" id="apiUrl" placeholder="https://script.google.com/macros/s/..." />
+        </div>
+        <button class="btn-connect" id="btnConnect" onclick="connectSheets()">⚡ Conectar e Carregar Dados</button>
+        <button class="btn-refresh" id="btnRefresh" onclick="refreshData()" style="display:none">🔄 Atualizar dados agora</button>
+        <button class="show-script-btn" onclick="openModal()">📋 Ver código para instalar na planilha</button>
+        <div class="data-preview" id="dataPreview">
+          <div class="data-item"><span class="data-item-label">Renda mensal</span><span class="data-item-value green" id="dp-renda">—</span></div>
+          <div class="data-item"><span class="data-item-label">Total gasto (mês)</span><span class="data-item-value red" id="dp-gastos">—</span></div>
+          <div class="data-item"><span class="data-item-label">Saldo restante</span><span class="data-item-value" id="dp-saldo">—</span></div>
+          <div class="data-item"><span class="data-item-label">Dívidas</span><span class="data-item-value amber" id="dp-dividas">—</span></div>
+          <div class="data-item"><span class="data-item-label">Investido</span><span class="data-item-value green" id="dp-invest">—</span></div>
+          <div class="data-item"><span class="data-item-label">Lançamentos</span><span class="data-item-value" id="dp-lancamentos">—</span></div>
+          <div class="data-item"><span class="data-item-label">Atualizado</span><span class="data-item-value" id="dp-updated">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modo de análise -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Modo de Análise</div>
+      <button class="mode-btn active" onclick="setMode('geral',this)"><div class="mode-dot"></div>Consultor Geral</button>
+      <button class="mode-btn" onclick="setMode('invest',this)"><div class="mode-dot"></div>Especialista Investimentos</button>
+      <button class="mode-btn" onclick="setMode('dividas',this)"><div class="mode-dot"></div>Estrategista de Dívidas</button>
+      <button class="mode-btn" onclick="setMode('gastos',this)"><div class="mode-dot"></div>Analista de Gastos</button>
+      <button class="mode-btn" onclick="setMode('edu',this)"><div class="mode-dot"></div>Educação Financeira</button>
+    </div>
+
+    <!-- Quick questions -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Perguntas Rápidas</div>
+      <button class="quick-btn" onclick="quickAsk('Faça uma análise completa do meu fluxo de caixa 2025 vs 2026')">📊 Fluxo de caixa</button>
+      <button class="quick-btn" onclick="quickAsk('Meu cartão chegou a R$ 40 mil em março. O que fazer para reduzir?')">💳 Reduzir cartão</button>
+      <button class="quick-btn" onclick="quickAsk('Como está minha carteira de fundos? Vale rebalancear agora?')">📈 Revisar carteira</button>
+      <button class="quick-btn" onclick="quickAsk('Quanto da Lets Pipa devo reinvestir vs gastar por mês?')">💰 Gestão Lets Pipa</button>
+      <button class="quick-btn" onclick="quickAsk('Crie um plano de reserva de emergência para empresário com renda irregular')">🛡️ Reserva emergência</button>
+      <button class="quick-btn" onclick="quickAsk('Com R$ 1,4M faturados na Lita em 6 meses, qual o ROI real considerando os R$ 426k aportados?')">🍷 ROI da Lita</button>
+      <button class="quick-btn" onclick="quickAsk('O CMV da Mag Market chegou a 43% em junho. Como resolver?')">🥐 CMV Mag Market</button>
+      <button class="quick-btn" onclick="quickAsk('Qual a melhor alocação para meu perfil moderado considerando SELIC a 13,75%?')">🎯 Alocação ideal</button>
+      <button class="quick-btn" onclick="quickAsk('Como me planejar financeiramente tendo renda irregular da Lets Pipa?')">📅 Renda irregular</button>
+    </div>
+
+  </aside>
+
+  <!-- CHAT -->
+  <main class="chat-area">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">💹</div>
+        <h1>Seu Agente Financeiro Pessoal</h1>
+        <p>Seu consultor financeiro pessoal especializado em gestão de fluxo de caixa, investimentos com perfil moderado e redução de gastos. Conecte a planilha para análises com seus dados reais.</p>
+        <div class="welcome-chips">
+          <div class="chip" onclick="quickAsk('Analise meu fluxo de caixa de 2025 e diga onde posso melhorar')">📊 Análise 2025</div>
+          <div class="chip" onclick="quickAsk('Meu cartão está muito alto — como reduzir os gastos?')">💳 Reduzir cartão</div>
+          <div class="chip" onclick="quickAsk('Como está minha carteira de investimentos? Devo rebalancear?')">📈 Revisar carteira</div>
+          <div class="chip" onclick="quickAsk('Qual a melhor estratégia considerando que minha renda é irregular?')">💡 Renda variável</div>
+          <div class="chip" onclick="quickAsk('Vale a pena continuar investindo no Dionis Restaurante?')">🍽️ Análise Dionis</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div class="upload-zone" id="uploadZone" style="flex:1;margin-bottom:0" onclick="document.getElementById('csvInput').click()">
+          <span>📎</span>
+          <div class="upload-zone-text"><strong>Extrato CSV ou fatura</strong> — arraste ou clique</div>
+          <input type="file" id="csvInput" accept=".csv,.txt,.ofx" onchange="handleFile(event)" />
+          <span class="upload-status" id="uploadStatus"></span>
+        </div>
+        <button onclick="abrirPasteJSON()" style="background:var(--blue-dim);border:1px dashed var(--blue);border-radius:var(--radius-sm);color:var(--blue);font-family:var(--font);font-size:11px;padding:0 12px;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='var(--blue)';this.style.color='#000'" onmouseout="this.style.background='var(--blue-dim)';this.style.color='var(--blue)'">
+          📋 Colar JSON<br>da planilha
+        </button>
+      </div>
+      <!-- Modal colar JSON -->
+      <div id="pasteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);" onclick="if(event.target===this)fecharPasteJSON()">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;">
+          <div style="font-size:15px;font-weight:600;margin-bottom:8px;">📋 Colar dados da planilha</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+            No Apps Script da planilha, execute <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:var(--green)">testarAPI()</code> → Ver → Registros → copie o JSON e cole abaixo.
+          </div>
+          <textarea id="jsonPaste" style="width:100%;height:160px;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;padding:10px;outline:none;resize:vertical;" placeholder='{"timestamp":"...","resumo":{...}}'></textarea>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button onclick="processarJSONColado()" style="flex:1;background:var(--green-dim);border:1px solid var(--green);border-radius:8px;color:var(--green);font-family:var(--font);font-size:13px;font-weight:600;padding:9px;cursor:pointer;">✓ Carregar dados</button>
+            <button onclick="fecharPasteJSON()" style="background:none;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-family:var(--font);font-size:13px;padding:9px 16px;cursor:pointer;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-wrap">
+          <textarea id="userInput" placeholder="Pergunte sobre seus gastos, investimentos, dívidas..." rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="input-hint">Enter para enviar · Shift+Enter nova linha · Perfil moderado de investimentos</div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: Script de instalação -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h2>📋 Como conectar a planilha ao FinAgent</h2>
+    <p>Siga os passos abaixo para instalar o script na sua planilha e gerar a URL de conexão. É feito uma única vez!</p>
+
+    <div class="step"><div class="step-num">1</div><div class="step-text">Abra sua planilha no Google Sheets e vá em <strong>Ferramentas → Editor de script</strong></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">Apague todo o código existente e <strong>cole o código abaixo</strong> no editor</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">Clique em <strong>💾 Salvar</strong> e depois em <strong>Implantar → Nova implantação</strong></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text">Em "Tipo", selecione <strong>App da Web</strong> → "Quem tem acesso": <strong>Qualquer pessoa</strong> → clique <strong>Implantar</strong></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-text">Copie a <strong>URL da implantação</strong> gerada, cole no campo "URL da sua API" na lateral e clique em Conectar</div></div>
+
+    <div class="code-block" id="scriptCode"></div>
+
+    <div class="modal-actions">
+      <button class="btn-copy" onclick="copyScript()">📋 Copiar código</button>
+      <button class="btn-close" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── APPS SCRIPT CODE ─────────────────────────────────────────────────────────
+const APPS_SCRIPT_CODE = `// FinAgent — API Bridge para Google Sheets
+// Cole este código em: Ferramentas → Editor de script
+// Depois: Implantar → Nova implantação → App da Web → Qualquer pessoa → Implantar
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = coletarDados(ss);
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({erro: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function coletarDados(ss) {
+  var resultado = {
+    timestamp: new Date().toISOString(),
+    resumo: {},
+    gastosPorCategoria: [],
+    ultimosLancamentos: [],
+    investimentos: [],
+    metas: [],
+    dividas: []
+  };
+
+  // ── Aba Config ────────────────────────────────────────────────────────────
+  try {
+    var cfg = ss.getSheetByName("⚙️ Config");
+    if (cfg) {
+      resultado.resumo.rendaMensal   = cfg.getRange("B4").getValue() || 0;
+      resultado.resumo.salario       = cfg.getRange("B5").getValue() || 0;
+      resultado.resumo.rendaExtra    = cfg.getRange("B6").getValue() || 0;
+      resultado.resumo.metaInvest    = cfg.getRange("B7").getValue() || 0;
+      resultado.resumo.metaReserva   = cfg.getRange("B8").getValue() || 0;
+      resultado.resumo.tetoGastos    = cfg.getRange("B10").getValue() || 0;
+
+      // Categorias e orçamentos
+      var catData = cfg.getRange("A15:C25").getValues();
+      catData.forEach(function(row) {
+        if (row[0] && row[2]) {
+          resultado.gastosPorCategoria.push({
+            categoria: row[0],
+            orcamento: row[2]
+          });
+        }
+      });
+    }
+  } catch(e) {}
+
+  // ── Aba Extrato C6 ────────────────────────────────────────────────────────
+  try {
+    var ext = ss.getSheetByName("📥 Extrato C6");
+    if (ext) {
+      var lastRow = Math.min(ext.getLastRow(), 500);
+      if (lastRow >= 10) {
+        var rows = ext.getRange(10, 1, lastRow - 9, 7).getValues();
+        var totalGastos = 0, totalEntradas = 0;
+        var gastosCat = {};
+        var mesAtual = new Date().getMonth() + 1;
+
+        rows.forEach(function(row) {
+          if (!row[0]) return;
+          var data = row[0] instanceof Date ? row[0] : new Date(row[0]);
+          var mes = data.getMonth() + 1;
+          var cat = row[3] || "Outros";
+          var tipo = row[5];
+          var valor = parseFloat(row[6]) || 0;
+
+          if (mes === mesAtual) {
+            if (tipo === "Saída") {
+              totalGastos += valor;
+              gastosCat[cat] = (gastosCat[cat] || 0) + valor;
+            } else {
+              totalEntradas += valor;
+            }
+          }
+        });
+
+        resultado.resumo.totalGastosMes = totalGastos;
+        resultado.resumo.totalEntradasMes = totalEntradas;
+        resultado.resumo.saldoMes = totalEntradas - totalGastos;
+
+        // Gastos por categoria (mês atual)
+        Object.keys(gastosCat).forEach(function(cat) {
+          for (var i = 0; i < resultado.gastosPorCategoria.length; i++) {
+            if (resultado.gastosPorCategoria[i].categoria === cat) {
+              resultado.gastosPorCategoria[i].gasto = gastosCat[cat];
+              resultado.gastosPorCategoria[i].percentual = resultado.gastosPorCategoria[i].orcamento > 0
+                ? Math.round((gastosCat[cat] / resultado.gastosPorCategoria[i].orcamento) * 100)
+                : 0;
+              break;
+            }
+          }
+        });
+
+        // Últimos 15 lançamentos
+        resultado.ultimosLancamentos = rows
+          .filter(function(r){ return r[0] && r[6]; })
+          .slice(-15)
+          .reverse()
+          .map(function(r){
+            return {
+              data: r[0] instanceof Date ? r[0].toLocaleDateString('pt-BR') : r[0],
+              titulo: r[1],
+              categoria: r[3],
+              tipo: r[5],
+              valor: parseFloat(r[6]) || 0
+            };
+          });
+
+        resultado.resumo.totalLancamentos = rows.filter(function(r){ return r[0]; }).length;
+      }
+    }
+  } catch(e) {}
+
+  // ── Aba Investimentos ─────────────────────────────────────────────────────
+  try {
+    var inv = ss.getSheetByName("💼 Investimentos");
+    if (inv) {
+      var invRows = inv.getRange(10, 1, Math.min(inv.getLastRow() - 9, 100), 7).getValues();
+      var totalAportado = 0, totalAtual = 0;
+      invRows.forEach(function(row) {
+        if (!row[0] || !row[3]) return;
+        var aportado = parseFloat(row[3]) || 0;
+        var atual    = parseFloat(row[5]) || aportado;
+        if (aportado > 0) {
+          totalAportado += aportado;
+          totalAtual    += atual;
+          resultado.investimentos.push({
+            produto:   row[2],
+            categoria: row[1],
+            aportado:  aportado,
+            atual:     atual,
+            ganho:     atual - aportado
+          });
+        }
+      });
+      resultado.resumo.totalAportado = totalAportado;
+      resultado.resumo.totalAtual    = totalAtual;
+      resultado.resumo.ganhoTotal    = totalAtual - totalAportado;
+    }
+  } catch(e) {}
+
+  // ── Aba Metas Anuais ──────────────────────────────────────────────────────
+  try {
+    var meta = ss.getSheetByName("🎯 Metas Anuais");
+    if (meta) {
+      // Metas (linhas 5 a 10)
+      var metaRows = meta.getRange(5, 1, 6, 8).getValues();
+      metaRows.forEach(function(row) {
+        if (!row[0]) return;
+        resultado.metas.push({
+          meta:       row[0],
+          alvo:       parseFloat(row[1]) || 0,
+          acumulado:  parseFloat(row[2]) || 0,
+          prazo:      row[4],
+          prioridade: row[6]
+        });
+      });
+
+      // Dívidas (procura a seção de dívidas)
+      var divRows = meta.getRange(14, 1, 10, 9).getValues();
+      divRows.forEach(function(row) {
+        if (!row[0] || typeof row[0] !== 'string') return;
+        var total = parseFloat(row[1]) || 0;
+        if (total > 0) {
+          resultado.dividas.push({
+            credor:    row[0],
+            total:     total,
+            pago:      parseFloat(row[2]) || 0,
+            saldo:     parseFloat(row[3]) || total,
+            parcela:   parseFloat(row[4]) || 0,
+            prioridade: row[8]
+          });
+        }
+      });
+
+      resultado.resumo.totalDividas = resultado.dividas.reduce(function(s,d){ return s + d.saldo; }, 0);
+    }
+  } catch(e) {}
+
+  return resultado;
+}`;
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let messages = [];
+let currentMode = 'geral';
+let sheetsData = null;
+let csvContent = '';
+let isLoading = false;
+
+const MODES = {
+  geral:   'Consultor Financeiro Geral',
+  invest:  'Especialista em Investimentos',
+  dividas: 'Estrategista de Dívidas',
+  gastos:  'Analista de Gastos',
+  edu:     'Educador Financeiro',
+};
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('scriptCode').textContent = APPS_SCRIPT_CODE;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+function copyScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+  const btn = document.querySelector('.btn-copy');
+  btn.textContent = '✓ Copiado!';
+  setTimeout(() => btn.textContent = '📋 Copiar código', 2000);
+}
+
+// ── SHEETS CONNECTION ─────────────────────────────────────────────────────────
+async function connectSheets() {
+  const url = document.getElementById('apiUrl').value.trim();
+  if (!url) { alert('Cole a URL da sua implantação do Apps Script'); return; }
+  await fetchSheetsData(url);
+}
+
+async function refreshData() {
+  const url = document.getElementById('apiUrl').value.trim();
+  if (url) await fetchSheetsData(url);
+}
+
+async function fetchSheetsData(url) {
+  setBadge('loading', '...');
+  document.getElementById('btnConnect').disabled = true;
+  document.getElementById('sheetsSubtitle').textContent = 'Conectando...';
+
+  // Tenta buscar os dados diretamente ou via proxies CORS
+  async function tentarBusca(urlAlvo) {
+    // 1. Tenta direto primeiro (funciona se o Apps Script tiver CORS liberado)
+    try {
+      const r = await fetch(urlAlvo, { mode: 'cors', signal: AbortSignal.timeout(8000) });
+      if (r.ok) {
+        const json = await r.json();
+        if (!json.erro) return json;
+      }
+    } catch(e) {}
+
+    // 2. Proxy corsproxy.io
+    try {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(urlAlvo)}`,
+        { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const txt = await r.text();
+        const json = JSON.parse(txt);
+        if (!json.erro) return json;
+      }
+    } catch(e) {}
+
+    // 3. Proxy allorigins (formato antigo)
+    try {
+      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(urlAlvo)}`,
+        { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const w = await r.json();
+        const json = JSON.parse(w.contents);
+        if (!json.erro) return json;
+      }
+    } catch(e) {}
+
+    // 4. Proxy cors-anywhere via herokuapp
+    try {
+      const r = await fetch(`https://cors-anywhere.herokuapp.com/${urlAlvo}`,
+        { headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const json = await r.json();
+        if (!json.erro) return json;
+      }
+    } catch(e) {}
+
+    throw new Error('Todos os proxies falharam');
+  }
+
+  try {
+    const data = await tentarBusca(url);
+    sheetsData = data;
+    updateDataPreview(data);
+    setBadge('connected', 'On');
+    document.getElementById('sheetsSubtitle').textContent = 'Dados carregados ✓';
+    document.getElementById('btnRefresh').style.display = 'block';
+    document.getElementById('headerStatus').textContent = 'Planilha Conectada';
+    addAgentMessage(buildConnectionSummary(data));
+
+  } catch (err) {
+    // Todos os proxies falharam — tenta método alternativo via iframe + postMessage
+    setBadge('loading', '?');
+    document.getElementById('sheetsSubtitle').textContent = 'Tentando método alternativo...';
+    addAgentMessage(
+      `⚠️ **Proxy CORS bloqueado.** Vou te dar uma solução alternativa simples.\n\n` +
+      `**Opção mais fácil — colar os dados manualmente:**\n` +
+      `1. Abra sua planilha no Google Sheets\n` +
+      `2. Ferramentas → Editor de script\n` +
+      `3. Cole e execute esta função:\n\n` +
+      `\`\`\`\nfunction testarAPI() {\n  var resultado = lerDadosPlanilha(SpreadsheetApp.getActiveSpreadsheet());\n  Logger.log(JSON.stringify(resultado));\n}\n\`\`\`\n\n` +
+      `4. Vá em **Ver → Registros** no editor, copie o JSON exibido\n` +
+      `5. Cole aqui no chat — eu processo os dados diretamente!\n\n` +
+      `Ou **reimplante o script** seguindo exatamente:\n` +
+      `• Implantar → **Nova implantação** (não editar a existente)\n` +
+      `• Tipo: **App da Web**\n` +
+      `• Executar como: **Minha conta**\n` +
+      `• Acesso: **Qualquer pessoa (mesmo anônimo)**\n` +
+      `• Copie a **nova URL** gerada e cole aqui`
+    );
+    setBadge('disconnected', 'Erro');
+    document.getElementById('sheetsSubtitle').textContent = 'Ver instruções no chat';
+  }
+
+  document.getElementById('btnConnect').disabled = false;
+}
+
+function setBadge(state, text) {
+  const b = document.getElementById('connBadge');
+  b.className = `conn-badge ${state}`;
+  b.textContent = text;
+}
+
+function updateDataPreview(data) {
+  const r = data.resumo || {};
+  const fmt = (v) => v ? `R$ ${parseFloat(v).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0})}` : '—';
+  document.getElementById('dp-renda').textContent        = fmt(r.rendaMensal);
+  document.getElementById('dp-gastos').textContent       = fmt(r.totalGastosMes);
+  document.getElementById('dp-saldo').textContent        = fmt(r.saldoMes);
+  document.getElementById('dp-dividas').textContent      = fmt(r.totalDividas);
+  document.getElementById('dp-invest').textContent       = fmt(r.totalAtual);
+  document.getElementById('dp-lancamentos').textContent  = r.totalLancamentos || '—';
+  document.getElementById('dp-updated').textContent      = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dataPreview').style.display   = 'block';
+
+  const saldo = parseFloat(r.saldoMes) || 0;
+  document.getElementById('dp-saldo').className = `data-item-value ${saldo >= 0 ? 'green' : 'red'}`;
+}
+
+function buildConnectionSummary(data) {
+  const r = data.resumo || {};
+  const fmt = (v) => `R$ ${parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+  const saldo = parseFloat(r.saldoMes||0);
+  const txPoupanca = r.rendaMensal > 0 ? ((saldo / r.rendaMensal) * 100).toFixed(0) : 0;
+
+  let msg = `✅ **Planilha conectada com sucesso!** Já tenho acesso aos seus dados financeiros reais.\n\n`;
+  msg += `📊 **Resumo do mês atual:**\n`;
+  msg += `• Renda mensal: **${fmt(r.rendaMensal)}**\n`;
+  msg += `• Total gasto: **${fmt(r.totalGastosMes)}**\n`;
+  msg += `• Saldo restante: **${fmt(r.saldoMes)}** (${txPoupanca}% da renda)\n`;
+  if (r.totalDividas > 0) msg += `• Dívidas: **${fmt(r.totalDividas)}** ⚠️\n`;
+  if (r.totalAtual > 0) msg += `• Patrimônio investido: **${fmt(r.totalAtual)}**\n`;
+  if (r.totalLancamentos) msg += `• Lançamentos no extrato: **${r.totalLancamentos}**\n`;
+
+  msg += `\nAgora posso te dar análises **personalizadas e precisas**. O que gostaria de analisar primeiro?`;
+  return msg;
+}
+
+// ── SYSTEM PROMPT ─────────────────────────────────────────────────────────────
+function buildSystemPrompt() {
+  const CONHECIMENTO_FINANCEIRO = `
+FINAGENT — CONSULTOR FINANCEIRO DE LUCAS GOMES NAVARRO SANCHEZ (Mar/2026)
+Perfil: MODERADO (50% RF / 30% RV / 20% Reserva) | Renda IRREGULAR | Setor F&B
+Comunicação: CONSULTIVO — raciocínio + AÇÃO RECOMENDADA ao final
+
+NEGÓCIOS:
+1. LETS PIPA EVENTOS — principal renda. Recebimentos: R$308k (2025) + R$43k (jan-mar/26). Irregular, concentrado em alguns meses.
+2. NELITA (restaurante italiano) — Fat. médio R$510k/mês (jan-jul/25). Ticket R$480-564. CMV 20-34%. Consolidado.
+3. MAG MARKET (boulangerie) — Fat. médio R$182k/mês (jan-jul/25). Ticket R$76-215. CMV volátil (16-43%). Jun/25: CMV 43% — alerta.
+4. DIONIS/LITA WINE BAR — aberto out/25. Aporte total R$426k. Fat. 6 meses: R$1,42M. Ticket R$255-372. Jan/26 melhor mês: R$310k.
+   Histórico: Set/25 R$48k(7dias) | Out/25 R$323k(23dias) | Nov/25 R$270k | Dez/25 R$222k(14dias) | Jan/26 R$310k | Fev/26 R$246k
+5. ESPAÇO FUNCHAL/VILLAGGIO JK — eventos. Recebeu R$198k em dez/25.
+
+FINANÇAS PESSOAIS 2025-2026:
+- Entradas 2025: R$1,87M | Saídas 2025: R$1,69M | Saldo: R$187k
+- Entradas 2026 (jan-mar): R$276k
+- Cartão: Jan/26 R$28,9k | Fev/26 R$38,1k | Mar/26 R$42,5k (+47% em 3 meses!)
+- Custos jurídicos 2025: R$60k (Paulo Afonso Advogados)
+
+INVESTIMENTOS (Fev/2026) — Total: R$91k em fundos + R$426k Dionis = R$517k patrimônio:
+- Itaú Gold FIC: R$48,2k (+20,5%) | SPX Patriot FIA: R$16,8k (+12,3%)
+- Carbon Ouro: R$14,7k (+11,4%) | Bradesco FIM Ouro: R$10,5k (+5,4%)
+- BNP Paribas Rubi: R$822 | Bradesco Centurion: RESGATADO mar/26 | C6 Carbon: RESGATE PARCIAL mar/26
+
+ALERTAS:
+⚠️ Cartão crescendo 47% em 3 meses | ⚠️ 82% patrimônio sem liquidez (Dionis) | ⚠️ Sem reserva emergência identificada
+
+MERCADO (2026): SELIC 13,75% | CDI ~13,65% | IPCA ~5,5% | LCI/LCA isentas ~16,5% bruto equivalente
+CMV ideal restaurante: 28-32% | CMV boulangerie: 25-35% | Wine bar break-even: 18-24 meses típico
+`;
+
+  let ctx = CONHECIMENTO_FINANCEIRO;
+  ctx += `
+MODO ATIVO: ${MODES[currentMode]}
+`;
+
+  // Adiciona dados ao vivo da planilha se conectada
+  if (sheetsData) {
+    const r = sheetsData.resumo || {};
+    const fmt = (v) => `R$ ${parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+
+    ctx += `
+═══════════════════════════════════════════════════════════
+`;
+    ctx += `DADOS AO VIVO DA PLANILHA (atualizado agora):
+`;
+    ctx += `═══════════════════════════════════════════════════════════
+`;
+    ctx += `Renda configurada:    ${fmt(r.rendaMensal)}/mês
+`;
+    ctx += `Gasto no mês atual:   ${fmt(r.totalGastosMes)}
+`;
+    ctx += `Entrada no mês atual: ${fmt(r.totalEntradasMes)}
+`;
+    ctx += `Saldo do mês:         ${fmt(r.saldoMes)}
+`;
+    if (r.totalDividas > 0) ctx += `Total de dívidas:     ${fmt(r.totalDividas)} ⚠️
+`;
+    if (r.totalAtual > 0) {
+      ctx += `Patrimônio investido: ${fmt(r.totalAtual)}
+`;
+      ctx += `Ganho/perda total:    ${fmt(r.ganhoTotal)}
+`;
+    }
+    if (r.totalLancamentos) ctx += `Lançamentos extrato:  ${r.totalLancamentos}
+`;
+
+    if (sheetsData.gastosPorCategoria?.length > 0) {
+      ctx += `
+GASTOS POR CATEGORIA (mês atual):
+`;
+      sheetsData.gastosPorCategoria.forEach(c => {
+        if (c.gasto > 0 || c.orcamento > 0) {
+          const alerta = c.percentual > 100 ? ' 🔴 ESTOURADO' : c.percentual > 80 ? ' 🟡 ATENÇÃO' : '';
+          ctx += `  ${c.categoria}: ${fmt(c.gasto)} / orçado ${fmt(c.orcamento)} (${c.percentual||0}%)${alerta}
+`;
+        }
+      });
+    }
+
+    if (sheetsData.ultimosLancamentos?.length > 0) {
+      ctx += `
+ÚLTIMOS LANÇAMENTOS:
+`;
+      sheetsData.ultimosLancamentos.slice(0,8).forEach(l => {
+        ctx += `  ${l.data} | ${l.titulo?.substring(0,35)} | ${l.categoria} | ${l.tipo} | ${fmt(l.valor)}
+`;
+      });
+    }
+
+    if (sheetsData.investimentos?.length > 0) {
+      ctx += `
+INVESTIMENTOS ATIVOS:
+`;
+      sheetsData.investimentos.forEach(i => {
+        const ganho = i.ganho >= 0 ? `+${fmt(i.ganho)}` : fmt(i.ganho);
+        ctx += `  ${i.produto} (${i.categoria}): aportado ${fmt(i.aportado)} → atual ${fmt(i.atual)} (${ganho})
+`;
+      });
+    }
+
+    if (sheetsData.dividas?.length > 0) {
+      ctx += `
+DÍVIDAS:
+`;
+      sheetsData.dividas.forEach(d => {
+        ctx += `  ${d.credor}: saldo ${fmt(d.saldo)} | prioridade ${d.prioridade}
+`;
+      });
+    }
+
+    if (sheetsData.metas?.length > 0) {
+      ctx += `
+METAS FINANCEIRAS:
+`;
+      sheetsData.metas.forEach(m => {
+        if (m.meta && m.alvo > 0) {
+          const prog = m.alvo > 0 ? Math.round((m.acumulado/m.alvo)*100) : 0;
+          ctx += `  ${m.meta}: alvo ${fmt(m.alvo)} | progresso ${prog}% | prazo ${m.prazo}
+`;
+        }
+      });
+    }
+
+    ctx += `═══════════════════════════════════════════════════════════
+`;
+  } else {
+    ctx += `
+⚠️ PLANILHA NÃO CONECTADA — usando dados históricos do conhecimento base.
+`;
+    ctx += `Peça a Lucas para conectar a planilha na lateral para análises ao vivo.
+`;
+  }
+
+  if (csvContent) {
+    ctx += `
+EXTRATO/FATURA ANEXADA:
+${csvContent.substring(0,3000)}
+`;
+  }
+
+  ctx += `
+REGRAS DE FORMATO DE RESPOSTA:
+- Seja CONSULTIVO: explique sempre o raciocínio por trás
+- Use números reais do histórico acima
+- Estruture com seções claras quando a resposta for longa
+- Sempre termine com "AÇÃO RECOMENDADA:" com 1-2 passos concretos
+- Responda em português brasileiro
+- Nunca prometa retornos garantidos
+- Para gastos do cartão: lembre que valores altos incluem parcelas de meses anteriores`;
+
+  return ctx;
+}
+
+// ── FILE UPLOAD ───────────────────────────────────────────────────────────────
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    csvContent = ev.target.result;
+    document.getElementById('uploadStatus').textContent = `✓ ${file.name}`;
+    document.getElementById('uploadZone').style.borderColor = 'var(--green)';
+    addAgentMessage(`📎 **Arquivo "${file.name}" carregado** (${csvContent.split('\n').length} linhas). Posso analisar os dados do seu cartão ou extrato. O que quer saber?`);
+  };
+  reader.readAsText(file);
+}
+
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', (e) => { e.preventDefault(); uz.classList.add('drag-over'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag-over'));
+uz.addEventListener('drop', (e) => {
+  e.preventDefault(); uz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile({ target: { files: e.dataTransfer.files } });
+});
+
+// ── MESSAGES ──────────────────────────────────────────────────────────────────
+function hideWelcome() { const w = document.getElementById('welcome'); if (w) w.remove(); }
+function formatTime() { return new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+
+function addUserMessage(text) {
+  hideWelcome();
+  const c = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'message user';
+  d.innerHTML = `<div><div class="bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-meta">${formatTime()}</div></div><div class="avatar user">EU</div>`;
+  c.appendChild(d); scrollBottom();
+}
+
+function addAgentMessage(text) {
+  hideWelcome();
+  const c = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'message agent';
+  d.innerHTML = `<div class="avatar agent">FA</div><div><div class="bubble">${formatText(text)}</div><div class="msg-meta">FinAgent · ${formatTime()}</div></div>`;
+  c.appendChild(d); scrollBottom();
+}
+
+function addTyping() {
+  hideWelcome();
+  const c = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'message agent'; d.id = 'typing';
+  d.innerHTML = `<div class="avatar agent">FA</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  c.appendChild(d); scrollBottom();
+}
+
+function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+
+function formatText(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/^#{1,3} (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^[-•] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*?<\/li>(\n|$))+/gs, (m) => `<ul>${m}</ul>`)
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(?!<[hulo]|<\/[hulo])(.+)/gm,(m) => m.startsWith('<') ? m : `<p>${m}</p>`)
+    .replace(/<p><\/p>/g,'');
+}
+
+function scrollBottom() { const c=document.getElementById('messages'); setTimeout(()=>c.scrollTop=c.scrollHeight,50); }
+
+// ── SEND ──────────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const inp = document.getElementById('userInput');
+  const text = inp.value.trim();
+  if (!text || isLoading) return;
+  inp.value=''; inp.style.height='auto';
+  isLoading=true; document.getElementById('sendBtn').disabled=true;
+  addUserMessage(text);
+  messages.push({role:'user',content:text});
+  addTyping();
+  try {
+    // ── URL DO SEU CLOUDFLARE WORKER ────────────────────────────────────────
+    // Substitua o valor abaixo pela URL do seu Worker e salve no GitHub
+    const WORKER_URL = "https://young-bar-2277.lucasgnsanchez.workers.dev/";
+    // Exemplo: "https://finagent-proxy.usuario.workers.dev"
+    // ────────────────────────────────────────────────────────────────────────
+
+    if (!WORKER_URL || WORKER_URL === "COLE_AQUI_A_URL_DO_SEU_WORKER") {
+      removeTyping();
+      isLoading=false; document.getElementById('sendBtn').disabled=false;
+      addAgentMessage(
+        '⚙️ **Worker não configurado ainda!**\n\n' +
+        'Abra o arquivo `index.html` no GitHub, encontre a linha:\n\n' +
+        '`const WORKER_URL = "https://young-bar-2277.lucasgnsanchez.workers.dev/";`\n\n' +
+        'E substitua pelo endereço do seu Cloudflare Worker. Depois clique em **Commit changes**.'
+      );
+      return;
+    }
+
+    const res = await fetch(WORKER_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-3-haiku-20240307',
+        max_tokens:1000,
+        system:buildSystemPrompt(),
+        messages:messages.slice(-12).map(m => ({
+          role: m.role,
+          content: typeof m.content === 'string' ? m.content : String(m.content)
+        }))
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Erro ao processar.';
+    removeTyping();
+    messages.push({role:'assistant',content:reply});
+    addAgentMessage(reply);
+  } catch(err) {
+    removeTyping();
+    addAgentMessage('⚠️ Erro de conexão. Verifique sua internet e tente novamente.');
+  }
+  isLoading=false; document.getElementById('sendBtn').disabled=false;
+  inp.focus();
+}
+
+function quickAsk(text) { document.getElementById('userInput').value=text; sendMessage(); }
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();} }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function setMode(mode,btn) {
+  currentMode=mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+document.getElementById('userInput').focus();
+
+// ── PASTE JSON ──────────────────────────────────────────────────────────────
+function abrirPasteJSON() {
+  const m = document.getElementById('pasteModal');
+  m.style.display = 'flex';
+  setTimeout(() => document.getElementById('jsonPaste').focus(), 100);
+}
+
+function fecharPasteJSON() {
+  document.getElementById('pasteModal').style.display = 'none';
+  document.getElementById('jsonPaste').value = '';
+}
+
+function processarJSONColado() {
+  const raw = document.getElementById('jsonPaste').value.trim();
+  if (!raw) { alert('Cole o JSON primeiro!'); return; }
+  try {
+    const data = JSON.parse(raw);
+    if (!data.resumo) throw new Error('JSON inválido — falta o campo "resumo"');
+    sheetsData = data;
+    updateDataPreview(data);
+    setBadge('connected', 'On');
+    document.getElementById('sheetsSubtitle').textContent = 'Dados carregados ✓';
+    document.getElementById('btnRefresh').style.display = 'block';
+    document.getElementById('headerStatus').textContent = 'Planilha Conectada';
+    fecharPasteJSON();
+    addAgentMessage(buildConnectionSummary(data));
+  } catch(e) {
+    alert('JSON inválido: ' + e.message + '\n\nVerifique se copiou o conteúdo completo dos Registros do Apps Script.');
+  }
+}
+</script>
+</body>
+</html>
